@@ -1,0 +1,123 @@
+local redzlib = loadstring(game:HttpGet("https://pastebin.com/raw/9CDyN3sU"))()
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+local Window = redzlib:MakeWindow({
+    Title = "NovaxHuv",
+    SubTitle = "Aimlock com escolha de parte + Speed Hack",
+    SaveFolder = "NovaxConfig"
+})
+
+-- Aba Aimlock
+local AimTab = Window:MakeTab({"Aimlock", "Trava mira no inimigo"})
+
+local AimPart = "HumanoidRootPart"  -- padrão
+local AimlockEnabled = false
+local LockedPlayer = nil
+
+local function GetClosestPlayer()
+    local closest = nil
+    local shortestDist = math.huge
+    local mousePos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(AimPart) and player.Character:FindFirstChildOfClass("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local pos = player.Character[AimPart].Position
+            local screenPoint, onScreen = Camera:WorldToViewportPoint(pos)
+            if onScreen then
+                local dist = (mousePos - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
+                if dist < shortestDist then
+                    closest = player
+                    shortestDist = dist
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if AimlockEnabled and LockedPlayer and LockedPlayer.Character and LockedPlayer.Character:FindFirstChild(AimPart) then
+        local targetPos = LockedPlayer.Character[AimPart].Position
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
+    elseif AimlockEnabled then
+        LockedPlayer = GetClosestPlayer()
+    end
+end)
+
+AimTab:AddToggle({
+    Name = "Ativar Aimlock",
+    Description = "Trava mira no inimigo mais próximo",
+    Default = false,
+    Callback = function(state)
+        AimlockEnabled = state
+        if state then
+            LockedPlayer = GetClosestPlayer()
+            redzlib:Notify("Aimlock Ativado", LockedPlayer and ("Alvo: " .. LockedPlayer.Name) or "Nenhum jogador encontrado")
+        else
+            LockedPlayer = nil
+            redzlib:Notify("Aimlock Desativado", "Mira liberada")
+        end
+    end
+})
+
+AimTab:AddDropdown({
+    Name = "Parte para mirar",
+    Default = AimPart,
+    Options = {"Head", "Torso", "HumanoidRootPart"},
+    Callback = function(selected)
+        AimPart = selected
+        redzlib:Notify("Aimlock", "Agora mirando em: " .. AimPart)
+        if AimlockEnabled then
+            LockedPlayer = GetClosestPlayer()
+        end
+    end
+})
+
+-- Aba Speed Hack
+local SpeedTab = Window:MakeTab({"Speed Hack", "Ajuste de Velocidade"})
+
+local SpeedEnabled = false
+local WalkSpeedValue = 30
+
+SpeedTab:AddToggle({
+    Name = "Ativar Speed Hack",
+    Description = "Corre mais rápido (cuidado com anti-cheat)",
+    Default = false,
+    Callback = function(state)
+        SpeedEnabled = state
+        if SpeedEnabled then
+            redzlib:Notify("Speed Hack", "Ativado: Velocidade " .. WalkSpeedValue)
+        else
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = 16 end
+            redzlib:Notify("Speed Hack", "Desativado")
+        end
+    end
+})
+
+SpeedTab:AddSlider({
+    Name = "Velocidade",
+    Min = 30,
+    Max = 300,
+    Increase = 1,
+    Default = 30,
+    Callback = function(Value)
+        WalkSpeedValue = Value
+        if SpeedEnabled then
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = Value end
+        end
+    end
+})
+
+RunService.RenderStepped:Connect(function()
+    if SpeedEnabled then
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = WalkSpeedValue end
+    end
+end)
